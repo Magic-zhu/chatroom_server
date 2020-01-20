@@ -7,6 +7,7 @@ const Op = Sequelize.Op;
 const Redis = require("ioredis");
 const RedisConfig = require('../config/redis');
 const MysqlConfig = require('../config/mysql');
+const UserModel = require("../models/User")
 const redis = new Redis(RedisConfig.loginSystem);
 // 连接数据库
 const sequelize = new Sequelize(
@@ -28,36 +29,8 @@ const back = function (errcode, message, data) {
     return model
 }
 //定义模型
-const User = sequelize.define("user", {
-    user_name: {
-        type: Sequelize.STRING,
-        allowNull: false,
-    },
-    user_password: {
-        type: Sequelize.STRING,
-        allowNull: false,
-    },
-    user_friend: {
-        type: Sequelize.STRING,
-        defaultValue: "",
-    },
-    user_state: {
-        type: Sequelize.INTEGER,
-    },
-    user_brand: {
-        type: Sequelize.STRING
-    },
-    user_ava: {
-        type: Sequelize.STRING
-    },
-    user_point: {
-        type: Sequelize.INTEGER,
-        defaultValue: 0,
-    },
-    user_nickname: {
-        type: Sequelize.STRING
-    },
-})
+const User = sequelize.define("user", UserModel)
+// const Friend = sequelize.define('friend',FriendModel)
 // sequelize.sync();
 sequelize.authenticate().then(() => {
     console.log('数据库连接成功');
