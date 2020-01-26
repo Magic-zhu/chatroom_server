@@ -7,8 +7,11 @@ const Op = Sequelize.Op;
 const Redis = require("ioredis");
 const RedisConfig = require('../config/redis');
 const MysqlConfig = require('../config/mysql');
-const UserModel = require("../models/User")
+const UserModel = require("../models/User");
+const mongoose  = require('mongoose');
+const FriendModel = require('../models/Friend');
 const redis = new Redis(RedisConfig.loginSystem);
+
 // 连接数据库
 const sequelize = new Sequelize(
     MysqlConfig.db,
@@ -19,6 +22,7 @@ const sequelize = new Sequelize(
         dialect: 'mysql',
     }
 );
+
 //定义返回模型
 const back = function (errcode, message, data) {
     let model = {
@@ -28,9 +32,10 @@ const back = function (errcode, message, data) {
     data ? model.data = data : "";
     return model
 }
+
 //定义模型
-const User = sequelize.define("user", UserModel)
-// const Friend = sequelize.define('friend',FriendModel)
+const User = sequelize.define("user", UserModel);
+const m_friend= mongoose.model('chatroom',FriendModel);
 // sequelize.sync();
 sequelize.authenticate().then(() => {
     console.log('数据库连接成功');
@@ -157,7 +162,18 @@ router.get("/checkLogin", (req, res, next) => {
 
 //设置用户头像
 router.post('/setUserAva', (req, res) => {
-    let { query } = req;
+    let { body } = req;
+    User.update({
+        user_ava:body.url
+    },{
+        where:{
+            user_name:  body.user_name
+        }
+    }).then(res=>{
+        res.json(back(0, "成功", null))
+    }).catch(err=>{
+        res.json(back(50, "未知失败原因", null))
+    })
 })
 
 //查询好友列表
