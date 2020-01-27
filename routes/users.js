@@ -169,9 +169,10 @@ router.post('/setUserAva', (req, res) => {
         where:{
             user_name:  body.user_name
         }
-    }).then(res=>{
+    }).then(result=>{
         res.json(back(0, "成功", null))
     }).catch(err=>{
+        console.log(err)
         res.json(back(50, "未知失败原因", null))
     })
 })

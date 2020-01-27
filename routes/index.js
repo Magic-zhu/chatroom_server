@@ -54,8 +54,6 @@ router.get('/', function(req, res, next) {
 // })
 
 router.post("/upload",upload.single('file'),function(req,res,next){
-    let {body} = req;
-    console.log(req.file)
     if(!req.file){
         res.json({
             errcode:41,
@@ -66,7 +64,7 @@ router.post("/upload",upload.single('file'),function(req,res,next){
         res.json({
             errcode:0,
             message:"上传成功",
-            data:'localhost:8086/uploads/'+req.file.filename,
+            data:'http://localhost:8086/uploads/'+req.file.filename,
          })
     }
 })
