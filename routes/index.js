@@ -13,45 +13,11 @@ const storage = multer.diskStorage({
   })
 const upload = multer({storage});
 const fs = require('fs')
+
 /* GET home page. */
 router.get('/', function(req, res, next) {
   res.render('index', { title: 'Express' });
 });
-
-//路由拦截
-// router.all("/*",(req,res,next)=>{
-//     let {query} = req;
-//     console.log(req.url)
-//     if(req.url==="/login"||req.url==="/register"){
-//         next()
-//     }else{
-//         token.verify(query.token,(err,decode)=>{
-//             if(err){
-//                 switch(err.message){
-//                     case "jwt malformed":
-//                         res.json({
-//                             code:210,
-//                             message:"错误的token"
-//                         })
-//                         break
-//                     case "jwt expired":
-//                         res.json({
-//                             code:211,
-//                             message:"token过期"
-//                         })
-//                         break
-//                     default:
-//                         res.json({
-//                             code:212,
-//                             message:err.message
-//                         })
-//                 }
-//             }else{
-//                 next()
-//             }
-//         })
-//     }
-// })
 
 router.post("/upload",upload.single('file'),function(req,res,next){
     if(!req.file){

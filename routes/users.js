@@ -8,7 +8,7 @@ const Redis = require("ioredis");
 const RedisConfig = require('../config/redis');
 const MysqlConfig = require('../config/mysql');
 const UserModel = require("../models/User");
-const mongoose  = require('mongoose');
+const mongoose = require('mongoose');
 const FriendModel = require('../models/Friend');
 const redis = new Redis(RedisConfig.loginSystem);
 
@@ -35,42 +35,50 @@ const back = function (errcode, message, data) {
 
 //定义模型
 const User = sequelize.define("user", UserModel);
-const m_friend= mongoose.model('chatroom',FriendModel);
+const m_friend = mongoose.model('chatroom', FriendModel);
 // sequelize.sync();
 sequelize.authenticate().then(() => {
     console.log('数据库连接成功');
 })
 
 //路由拦截
-// router.all("/*",(req,res,next)=>{
-//     let {query} = req;
+// router.all("/*", (req, res, next) => {
+//     let { query, body } = req;
 //     console.log(req.url)
-//     if(req.url==="/login"||req.url==="/register"){
+//     if (req.url === "/login" || req.url === "/register") {
 //         next()
-//     }else{
-//         token.verify(query.token,(err,decode)=>{
-//             if(err){
-//                 switch(err.message){
+//     } else {
+//         token.verify(query.token, (err, decode) => {
+//             if (err) {
+//                 switch (err.message) {
 //                     case "jwt malformed":
 //                         res.json({
-//                             code:210,
-//                             message:"错误的token"
+//                             code: 210,
+//                             message: "错误的token"
 //                         })
 //                         break
 //                     case "jwt expired":
 //                         res.json({
-//                             code:211,
-//                             message:"token过期"
+//                             code: 211,
+//                             message: "token过期"
 //                         })
 //                         break
 //                     default:
 //                         res.json({
-//                             code:212,
-//                             message:err.message
+//                             code: 212,
+//                             message: err.message
 //                         })
 //                 }
-//             }else{
-//                 next()
+//             } else {
+//                 let user_name = query.user_name || body.user_name;
+//                 if (decode.user_name == user_name) {
+//                     next()
+//                 } else {
+//                     res.json({
+//                         code: 11,
+//                         message: "非法登陆"
+//                     })
+//                 }
 //             }
 //         })
 //     }
@@ -164,14 +172,14 @@ router.get("/checkLogin", (req, res, next) => {
 router.post('/setUserAva', (req, res) => {
     let { body } = req;
     User.update({
-        user_ava:body.url
-    },{
-        where:{
-            user_name:  body.user_name
+        user_ava: body.url
+    }, {
+        where: {
+            user_name: body.user_name
         }
-    }).then(result=>{
+    }).then(result => {
         res.json(back(0, "成功", null))
-    }).catch(err=>{
+    }).catch(err => {
         console.log(err)
         res.json(back(50, "未知失败原因", null))
     })
@@ -207,7 +215,6 @@ router.post('/addFriend', (req, res) => {
     let { body } = req;
     let user_name1, user_name2, user1, user2;
     token.verify(body.token, (err, decode) => {
-        console.log(decode)
         if (!err) {
             user_name1 = decode.from.user_name;
             user_name2 = decode.to;
@@ -260,15 +267,62 @@ router.post('/addFriend', (req, res) => {
 
 /**
  * 删除好友
- * user_name1
- * user_name2
+ * user_name
+ * friend_name
  */
 router.post('/deleteFriend', (req, res) => {
     let { body } = req;
-    User.findOne({
-        where: {
-            user_name: body.user_name1
-        }
+    let friend_info, user_info;
+    sequelize.transaction(() => {
+        return User.findOne({
+            where: {
+                user_name: body.friend_name
+            }
+        })
+            .then(friendInfo => {
+                console.log(friendInfo)
+                friend_info = friendInfo;
+                return User.findOne({
+                    where: {
+                        user_name: body.user_name
+                    }
+                })
+            })
+            .then(userInfo => {
+                user_info = userInfo;
+                let friend_array = userInfo.user_friend.split(",");
+                let index_temp = friend_array.findIndex(item => item == friend_info.id);
+                console.log(index_temp)
+                friend_array.splice(index_temp, 1);
+                friend_string = friend_array.join() + ",";
+                return User.update({
+                    user_friend: friend_string
+                }, {
+                    where: {
+                        user_name: body.user_name
+                    }
+                })
+            })
+            .then(() => {
+                let friend_array = friend_info.user_friend.split(",");
+                let index_temp = friend_array.findIndex(item => item == user_info.id);
+                friend_array.splice(index_temp, 1);
+                friend_string = friend_array.join();
+                return User.update({
+                    user_friend: friend_string
+                }, {
+                    where: {
+                        user_name: body.friend_name
+                    }
+                })
+            })
+            .then(() => {
+                res.json(back(0, "删除成功", null))
+            })
+            .catch(err => {
+                console.log(err)
+                res.json(back(50, "未知失败原因", null))
+            })
     })
 })
 

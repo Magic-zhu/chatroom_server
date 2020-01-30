@@ -49,7 +49,7 @@ function Task(type, others) {
         from: others.from || "",
         to: others.to || "",
         time: getNowDate(),
-        token:others.token||'',
+        token: others.token || '',
     }
 }
 
@@ -59,6 +59,7 @@ module.exports = function Mysocket(server) {
     io.set('origins', '*:*');
     var userIO = {};
     io.on('connect', function (socket) {
+
         //广播消息
         socket.on('say', (data) => {
             //广播给其他用户
@@ -66,6 +67,7 @@ module.exports = function Mysocket(server) {
             //转给自己
             socket.emit('self', new Message(data.user, data.message, data.user_ava, data.type));
         })
+
         //点对点聊天
         socket.on('chat', (data) => {
             console.log('点对点聊天消息', data);
@@ -78,14 +80,16 @@ module.exports = function Mysocket(server) {
                 redis_system.lpush(data.to, JSON.stringify(new Message(data.user, data.message, data.user_ava, data.type)))
             }
         })
+
         //登录后保存socket 状态为在线
         socket.on('newUser', (data) => {
             userIO[data.user] = socket;
             redis_friend.lrange(data.user, 0, -1).then(friend_requests => {
                 if (friend_requests) {
-                    friend_requests.map((item) => {
-                        socket.emit('firendRequests', item);
+                    let temp = friend_requests.map(item=>{
+                        return JSON.parse(item)
                     })
+                    socket.emit('offLineFriendRequest',temp)
                 }
             });
             redis_system.lrange(data.user, 0, -1).then(res => {
@@ -94,14 +98,15 @@ module.exports = function Mysocket(server) {
                     res.map((data) => {
                         temp.push(new Message(data.user, data.message, data.user_ava, data.type));
                     })
-                    socket.emit('offLineMessages', res);
+                    socket.emit('offLineMessages', temp);
                 }
             });
         })
+
         //添加某人为好友
         socket.on('addFriendTo', (data) => {
             let { from, to } = data;
-            data.token = Token.create({from,to},-1);
+            data.token = Token.create({ from, to }, -1);
             //如果对方在线
             if (userIO[to]) {
                 userIO[to].emit("addFriendFrom", new Task('addFriend', data))
@@ -109,10 +114,23 @@ module.exports = function Mysocket(server) {
                 redis_friend.lpush(to, JSON.stringify(new Task('addFriend', data)))
             }
         })
-        //返回客户端处理 好友添加的情况
-        socket.on('handleFirendRequests', data => {
-            redis_friend.lpop(data.user)
+
+        //拒绝好友请求
+        socket.on('refuseFriendRequest',data=>{
+            let { from, to } = data;
+            //如果对方在线
+            if (userIO[to]) {
+                userIO[to].emit("refuseFriendFrom", new Task('refuseFriend', data))
+            } else { //如果对方不在线
+                redis_friend.lpush(to, JSON.stringify(new Task('refuseFriend', data)))
+            }
         })
+
+        //返回客户端处理 好友添加的情况
+        socket.on('offLineFirendRequestReceived', data => {
+            redis_friend.ltrim(data.user, 1, 0)
+        })
+        
         //返回客户端处理 接收到了离线消息
         socket.on('offLineMessagesReceived', data => {
             redis_system.ltrim(data.user, 1, 0)
