@@ -211,9 +211,9 @@ router.get('/friendList', (req, res) => {
  * @param  token - 标识令牌
  */
 router.post('/addFriend', (req, res) => {
-    token.verify
     let { body } = req;
-    let user_name1, user_name2, user1, user2;
+    let user_name1, user_name2;
+    let user1,user2;
     token.verify(body.token, (err, decode) => {
         if (!err) {
             user_name1 = decode.from.user_name;
@@ -224,17 +224,19 @@ router.post('/addFriend', (req, res) => {
                 }
             }).then(result => {
                 if (result) {
-                    user1 = result
-                    return User.findOne({
-                        user_name: user_name2
-                    })
+                    user1 = result;
                 } else {
                     res.json(back(1, "未查询到该用户"))
                 }
+                return User.findOne({
+                    where:{
+                        user_name: user_name2
+                    }
+                })
             }).then(user => {
                 if (user) {
                     user2 = user;
-                    //事务 ： 必须两边都改变关系
+                    // 事务 ： 必须两边都改变关系
                     return sequelize.transaction(() => {
                         return User.update({
                             user_friend: user1.user_friend + user2.id + ','
