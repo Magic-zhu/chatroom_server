@@ -19,8 +19,9 @@ function getNowDate() {
  * @param {*} message - 消息内容
  * @param {*} ava - 头像地址
  * @param {*} type - 消息种类
+ * @param {*} time - 时间
  */
-function Message(user, message, ava, type) {
+function Message(user, message, ava, type, time) {
     let now = getNowDate();
     /**
      * type 种类
@@ -33,7 +34,7 @@ function Message(user, message, ava, type) {
         ava: ava,
         message: message,
         type: type,
-        time: now
+        time: time || now
     }
 }
 
@@ -86,17 +87,19 @@ module.exports = function Mysocket(server) {
             userIO[data.user] = socket;
             redis_friend.lrange(data.user, 0, -1).then(friend_requests => {
                 if (friend_requests) {
-                    let temp = friend_requests.map(item=>{
+                    let temp = friend_requests.map(item => {
                         return JSON.parse(item)
                     })
-                    socket.emit('offLineFriendRequest',temp)
+                    socket.emit('offLineFriendRequest', temp)
                 }
             });
+            //离线消息
             redis_system.lrange(data.user, 0, -1).then(res => {
                 if (res) {
                     let temp = [];
-                    res.map((data) => {
-                        temp.push(new Message(data.user, data.message, data.user_ava, data.type));
+                    res.forEach((data) => {
+                        data = JSON.parse(data)
+                        temp.push(new Message(data.user, data.message, data.ava, data.type,data.time));
                     })
                     socket.emit('offLineMessages', temp);
                 }
@@ -116,7 +119,7 @@ module.exports = function Mysocket(server) {
         })
 
         //拒绝好友请求
-        socket.on('refuseFriendRequest',data=>{
+        socket.on('refuseFriendRequest', data => {
             let { from, to } = data;
             //如果对方在线
             if (userIO[to]) {
@@ -130,7 +133,7 @@ module.exports = function Mysocket(server) {
         socket.on('offLineFirendRequestReceived', data => {
             redis_friend.ltrim(data.user, 1, 0)
         })
-        
+
         //返回客户端处理 接收到了离线消息
         socket.on('offLineMessagesReceived', data => {
             redis_system.ltrim(data.user, 1, 0)
